@@ -64,3 +64,41 @@ async function captureAndRecognize() {
     console.error(err);
   }
 }
+const markVideo = document.getElementById("markVideo");
+const startMarkBtn = document.getElementById("startMarkBtn");
+const stopMarkBtn = document.getElementById("stopMarkBtn");
+const markStatus = document.getElementById("markStatus");
+const recognizedList = document.getElementById("recognizedList");
+
+let markStream = null;
+let markInterval = null;
+let recognizedIds = new Set();
+
+/* ===============================
+   START MARKING
+================================ */
+startMarkBtn.addEventListener("click", async () => {
+  try {
+    markStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false
+    });
+
+    markVideo.srcObject = markStream;
+    await markVideo.play();
+
+    startMarkBtn.disabled = true;
+    stopMarkBtn.disabled = false;
+    markStatus.innerText = "Camera started. Recognizing...";
+
+    recognizedIds.clear();
+    recognizedList.innerHTML = "";
+
+    markInterval = setInterval(captureAndRecognize, 2000);
+
+  } catch (err) {
+    console.error(err);
+    markStatus.innerText = "Unable to access camera";
+    alert("Camera permission denied or camera not available");
+  }
+});

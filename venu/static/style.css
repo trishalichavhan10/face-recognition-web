@@ -1,20 +1,275 @@
-/* style.css */
+/* =========================
+   GLOBAL
+========================= */
 body {
-    background: #ffffff; 
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', Arial;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0d0f12;
+    color: #ffffff;
 }
-.card{
-    border-radius: 12px;
+
+/* =========================
+   LAYOUT
+========================= */
+.dashboard {
+    display: flex;
+    height: 100vh;
 }
-video{
-    max-width: 100%; border-radius: 10px;
+
+/* =========================
+   SIDEBAR
+========================= */
+.sidebar {
+    width: 220px;
+    background: #16181d;
+    padding: 20px;
+    border-right: 1px solid #2a2d35;
 }
-.progresss-bar{
-    transition: width 0.4s ease ;
+
+.logo {
+    margin-bottom: 30px;
+    font-weight: 600;
+    font-size: 18px;
 }
-.navbar-brand{
-    font-weight: 700;
+
+/* NAV LINKS */
+.sidebar nav a {
+    display: block;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    color: #9ca3af;
+    text-decoration: none;
+    transition: 0.25s ease;
 }
-.container{
-    padding-bottom: 40px;
+
+/* ACTIVE */
+.sidebar nav .active {
+    background: #c4f042;
+    color: #0d0f12;
+    font-weight: 600;
+}
+
+/* ADD STUDENT */
+.nav-add:hover {
+    background: #c4f042;
+    color: #0d0f12;
+}
+
+/* MARK ATTENDANCE */
+.nav-mark {
+    background: #1f2229;
+    color: #ffffff !important;
+    border-left: none;
+    box-shadow: none;
+    font-weight: 500;
+    margin-top: 15px;
+}
+.nav-mark:hover {
+    background: #2a2d35;
+    transform: translateY(-2px);
+    box-shadow: none;
+    color: #c4f042 !important;
+}
+
+/* RECORDS */
+.nav-record {
+    background: #1f2229;
+    color: #ffffff !important;
+    border-left: none;
+    box-shadow: none;
+    font-weight: 500;
+}
+.nav-record:hover {
+    background: #2a2d35;
+    transform: translateY(-2px);
+    box-shadow: none;
+    color: #a3e635 !important;
+}
+
+/* =========================
+   MAIN
+========================= */
+.main {
+    flex: 1;
+    padding: 20px;
+}
+
+/* =========================
+   TOPBAR
+========================= */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* =========================
+   BUTTON
+========================= */
+.btn-primary {
+    background: #c4f042;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: #0d0f12;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(196, 240, 66, 0.2);
+    background: #b0dd35;
+}
+
+/* =========================
+   FILTER BUTTONS
+========================= */
+.btn-filter {
+    border: 1px solid #c4f042;
+    color: #9ca3af !important;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    transition: 0.3s ease;
+    text-decoration: none;
+    font-size: 14px;
+    display: inline-block;
+}
+.btn-filter:hover, .btn-filter.active {
+    background: #c4f042;
+    color: #0d0f12 !important;
+    border-color: #c4f042;
+    box-shadow: 0 4px 10px rgba(196, 240, 66, 0.2);
+}
+
+/* =========================
+   STATS CARDS
+========================= */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: #16181d;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border: 1px solid #2a2d35;
+    transition: 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+/* Accent Line */
+.stat {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: #c4f042;
+}
+
+/* Different colors */
+.stat:nth-child(2)::before {
+    background: #4ade80;
+}
+
+.stat:nth-child(3)::before {
+    background: #22c55e;
+}
+
+.stat h6 {
+    color: #9ca3af;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.stat h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+/* =========================
+   TRAIN CARD
+========================= */
+.train-card {
+    margin-bottom: 20px;
+}
+
+/* =========================
+   PROGRESS BAR
+========================= */
+.progress {
+    height: 20px;
+    background: #1a1d24;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #2a2d35;
+}
+
+.progress-bar {
+    background: #c4f042;
+    height: 100%;
+    color: #0d0f12;
+    font-weight: bold;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================
+   CHART
+========================= */
+.chart-card {
+    height: 350px;
+}
+
+/* =========================
+   PAGE DIFFERENTIATION
+========================= */
+
+/* Mark Attendance Page */
+.mark-page .card {
+    border-left: 4px solid #c4f042;
+}
+
+/* Records Page */
+.record-page .card {
+    border-left: 4px solid #4ade80;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 992px) {
+    .dashboard {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+    }
 }

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background:#f3f6f9;">
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 style="font-weight:700; color:#0f172a;"><i class="bi bi-person-plus-fill" style="color:#4f46e5;"></i> Register Student</h3>
+                <a class="btn btn-secondary shadow-sm fw-bold border-0" href="/" style="border-radius:10px; background:#e2e8f0; color:#475569;"><i class="bi bi-arrow-left"></i> Dashboard</a>
+            </div>
+
+            <div class="card p-5 shadow-sm" style="border-radius:24px; border:none;">
+                <form id="studentForm">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted fw-bold small">FULL NAME</label>
+                            <input class="form-control" name="name" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted fw-bold small">ROLL NO.</label>
+                            <input class="form-control" name="roll">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted fw-bold small">REG. NO.</label>
+                            <input class="form-control" name="reg_no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted fw-bold small">CLASS</label>
+                            <input class="form-control" name="class">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted fw-bold small">SECTION</label>
+                            <input class="form-control" name="sec">
+                        </div>
+                    </div>
+
+                    <div class="mt-5 d-flex gap-3 justify-content-center">
+                        <button id="saveInfoBtn" type="submit" class="btn btn-primary" style="padding:12px 24px;">
+                            <i class="bi bi-save"></i> Save Details
+                        </button>
+                        <button id="startCaptureBtn" type="button" class="btn btn-warning" style="padding:12px 24px;" disabled>
+                            <i class="bi bi-camera"></i> Start Capture
+                        </button>
+                        <button id="addStudentBtn" type="button" class="btn btn-success" style="padding:12px 24px;" disabled>
+                            <i class="bi bi-cloud-arrow-up"></i> Upload Images
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-5" style="border-color:#e2e8f0;">
+
+                <div class="camera-container text-center pt-0" style="box-shadow:none;">
+                    <video id="video" width="100%" height="450" autoplay muted></video>
+                    
+                    <div class="mt-4">
+                        <div id="captureStatus" class="fw-bold" style="color:#4f46e5; font-size:15px;">
+                            <i class="bi bi-images"></i> Pictures Captured: 0 / 50
+                        </div>
+                        <div class="progress mt-2" style="height:14px;">
+                            <div id="progressBar" class="progress-bar" style="width:0%; background:linear-gradient(135deg, #10b981, #34d399);"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let studentId = null;
+let capturedImages = [];
+let video = document.getElementById("video");
+let stream = null;
+
+const form = document.getElementById("studentForm");
+const startCaptureBtn = document.getElementById("startCaptureBtn");
+const addStudentBtn = document.getElementById("addStudentBtn");
+const captureStatus = document.getElementById("captureStatus");
+const progressBar = document.getElementById("progressBar");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    try {
+        const res = await fetch("/add_student", { method: "POST", body: fd });
+        const data = await res.json();
+        if (data.student_id) {
+            studentId = data.student_id;
+            captureStatus.innerHTML = "<i class='bi bi-check-circle-fill'></i> Saved! Now click Start Capture";
+            captureStatus.style.color = "#10b981";
+            startCaptureBtn.disabled = false;
+            Array.from(form.elements).forEach(el => {
+                if (el !== startCaptureBtn && el !== addStudentBtn) el.disabled = true;
+            });
+        } else alert(data.error || "Error saving info");
+    } catch (err) {
+        alert("Failed to save info");
+    }
+});
+
+startCaptureBtn.addEventListener("click", async () => {
+    startCaptureBtn.disabled = true;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        let count = 0;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        
+        video.onloadeddata = () => {
+            canvas.width = video.videoWidth || 560;
+            canvas.height = video.videoHeight || 420;
+            const interval = setInterval(() => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    if (!blob) return;
+                    capturedImages.push(blob);
+                    count++;
+                    captureStatus.innerHTML = `<i class='bi bi-images'></i> Pictures Captured: ${count} / 50`;
+                    progressBar.style.width = (count * 2) + "%";
+                    if (count >= 50) {
+                        clearInterval(interval);
+                        stream.getTracks().forEach(t => t.stop());
+                        addStudentBtn.disabled = false;
+                        captureStatus.innerHTML = "<i class='bi bi-cloud-arrow-up-fill'></i> Complete! Click Upload";
+                        captureStatus.style.color = "#4f46e5";
+                    }
+                }, "image/jpeg", 0.9);
+            }, 100); 
+        };
+    } catch (err) {
+        alert("Camera error: " + err.message);
+        startCaptureBtn.disabled = false;
+    }
+});
+
+addStudentBtn.addEventListener("click", async () => {
+    if (!studentId || capturedImages.length === 0) return;
+    addStudentBtn.disabled = true;
+    const fd = new FormData();
+    fd.append("student_id", studentId);
+    capturedImages.forEach((blob, i) => {
+        fd.append("images[]", blob, `${i}.jpg`);
+    });
+    try {
+        captureStatus.innerHTML = "<i class='bi bi-arrow-repeat spin'></i> Uploading...";
+        const res = await fetch("/upload_face", { method: "POST", body: fd });
+        const data = await res.json();
+        alert("✅ Uploaded " + data.saved + " images!");
+        window.location.href = "/";
+    } catch (err) {
+        alert("Upload failed");
+        captureStatus.innerText = "❌ Upload failed. Try again.";
+        captureStatus.style.color = "#ef4444";
+        addStudentBtn.disabled = false;
+    }
+});
+</script>
+</body>
+</html>

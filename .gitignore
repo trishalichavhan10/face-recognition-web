@@ -1,0 +1,24 @@
+# Environment
+newenv/
+env/
+venv/
+.venv/
+__pycache__/
+
+# OS
+.DS_Store
+
+# Database
+*.db
+attendance.db
+train_status.json
+
+# Image Datasets
+dataset/
+images/
+faces/
+
+# Saved Models (Can be trained on the server directly, or push if you want)
+# We will comment this out since you might want to push your .pkl model
+# model.pkl 
+*.pkl
