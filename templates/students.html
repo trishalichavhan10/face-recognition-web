@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Database — FRA</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon"><i class="bi bi-camera"></i></div>
+                <div>
+                    <div class="logo-text">FRA</div>
+                    <div class="logo-sub">Face Recognition<br>Attendance</div>
+                </div>
+            </div>
+            <nav>
+                <a href="/"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a href="/mark_attendance"><i class="bi bi-camera-video"></i> Live Feed</a>
+                <a href="/students_list" class="active"><i class="bi bi-person-plus"></i> People DB</a>
+                <a href="/attendance_record"><i class="bi bi-file-text"></i> Logs</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="page-header">
+                <div>
+                    <h1>Student Database</h1>
+                    <div class="page-sub" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3a4060;">
+                        TOTAL_RECORDS: {{ students|length }}</div>
+                </div>
+                <a href="/add_student" class="btn-cyan">
+                    <i class="bi bi-person-plus-fill"></i> ADD NEW STUDENT
+                </a>
+            </div>
+
+            <div class="panel">
+                <span class="section-label">Database Management</span>
+
+                {% if students %}
+                <table class="fra-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Roll No.</th>
+                            <th>Class/Sec</th>
+                            <th>Reg No.</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr id="row-{{ s.id }}">
+                            <td style="font-family:'JetBrains Mono',monospace;color:#3a4060;font-size:12px;">#{{ s.id }}
+                            </td>
+                            <td style="font-weight:600;color:#e8eeff;">{{ s.name }}</td>
+                            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ s.roll }}</td>
+                            <td>{{ s.class }} {{ s.section }}</td>
+                            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#4a5270;">{{ s.reg_no
+                                }}</td>
+                            <td>
+                                <div style="display:flex;gap:6px;">
+                                    <a href="/student/{{ s.id }}"
+                                        style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(109,76,197,0.12);border:1px solid rgba(109,76,197,0.2);color:#a78bfa;text-decoration:none;font-size:13px;"
+                                        title="View Profile">
+                                        <i class="bi bi-person-badge"></i>
+                                    </a>
+                                    <button data-id="{{ s.id }}" data-name="{{ s.name }}"
+                                        class="btn-icon-del btn-delete" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="text-align:center;padding:60px;color:#3a4060;font-family:'JetBrains Mono',monospace;">
+                    <i class="bi bi-database-exclamation" style="font-size:36px;display:block;margin-bottom:12px;"></i>
+                    NO_RECORDS_FOUND
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+    <script>
+        document.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.btn-delete');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name');
+            if (!confirm(`Delete ${name}? This removes all face data and logs.`)) return;
+            try {
+                const data = await (await fetch(`/delete_student/${id}`, { method: 'DELETE' })).json();
+                if (data.success) {
+                    document.getElementById(`row-${id}`).remove();
+                    if (!document.querySelector('.fra-table tbody tr')) location.reload();
+                } else alert("Error deleting student");
+            } catch { alert("Server error"); }
+        });
+    </script>
+</body>
+
+</html>

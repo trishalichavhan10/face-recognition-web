@@ -76,7 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/attendance_stats");
 
-      // ⚠️ if route missing → don't crash
       if (!res.ok) {
         console.warn("attendance_stats route not found");
         return;
@@ -88,49 +87,66 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!canvas) return;
 
       const ctx = canvas.getContext("2d");
+      
+      const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+      gradient.addColorStop(0, "rgba(34, 211, 238, 0.4)");
+      gradient.addColorStop(1, "rgba(34, 211, 238, 0.0)");
 
       if (!chart) {
         chart = new Chart(ctx, {
-          type: "bar",
+          type: "line",
           data: {
             labels: data.dates || [],
             datasets: [
               {
                 label: "Attendance",
                 data: data.counts || [],
-                backgroundColor: "rgba(59, 130, 246, 0.7)",
-                borderRadius: 8,
-                barThickness: 20,
+                borderColor: "#22d3ee",
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointBackgroundColor: "#22d3ee",
+                pointBorderColor: "#12141c",
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                fill: true,
+                tension: 0.1
               },
             ],
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-
             plugins: {
               legend: {
-                display: true,
+                display: false,
               },
             },
-
             scales: {
               x: {
                 grid: {
-                  display: false,
+                  color: "rgba(255, 255, 255, 0.05)",
                 },
+                ticks: {
+                  color: "#5a6480",
+                  font: { family: "'JetBrains Mono', monospace", size: 10 }
+                }
               },
               y: {
                 beginAtZero: true,
+                grid: {
+                  color: "rgba(255, 255, 255, 0.05)",
+                },
                 ticks: {
+                  color: "#5a6480",
                   precision: 0,
+                  stepSize: 1,
+                  font: { family: "'JetBrains Mono', monospace", size: 10 }
                 },
               },
             },
           },
         });
       } else {
-        // Update existing chart
         chart.data.labels = data.dates || [];
         chart.data.datasets[0].data = data.counts || [];
         chart.update();
@@ -146,5 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateChart();
 
   // Auto refresh chart every 10 sec
-  setInterval(updateChart, 10000);
+  setInterval(() => {
+    updateChart();
+  }, 10000);
 });

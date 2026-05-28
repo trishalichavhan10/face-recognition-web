@@ -1,116 +1,611 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mark Attendance</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live Feed — FRA</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body style="background:#f3f6f9;">
-
-<div class="container my-5">
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 style="font-weight:700; color:#0f172a;"><i class="bi bi-camera-video-fill" style="color:#4f46e5;"></i> Live Face Check-In</h3>
-        <div>
-            <a class="btn btn-light shadow-sm me-2 fw-bold" href="/attendance_record" style="border-radius:10px;"><i class="bi bi-clipboard-data"></i> View Logs</a>
-            <a class="btn btn-secondary shadow-sm fw-bold" href="/" style="border-radius:10px;"><i class="bi bi-arrow-left"></i> Back</a>
-        </div>
-    </div>
-
-    <!-- MAIN CAMERA CARD -->
-    <div class="camera-container text-center">
-        <video id="video" width="100%" height="450" autoplay muted></video>
-
-        <div class="d-flex justify-content-center gap-3 mt-4">
-            <button id="startBtn" class="btn btn-primary btn-lg shadow-sm" style="border-radius:12px;">
-                <i class="bi bi-play-fill"></i> Start Camera
-            </button>
-            <button id="markBtn" class="btn btn-success btn-lg shadow-sm" style="border-radius:12px;" disabled>
-                <i class="bi bi-person-view"></i> Mark Attendance
-            </button>
-        </div>
-
-        <div class="mt-4">
-            <h5 id="statusText" class="text-muted fw-bold" style="color:#64748b;">
-                Waiting for camera...
-            </h5>
-        </div>
-    </div>
-</div>
-
-<script>
-let video = document.getElementById("video");
-let startBtn = document.getElementById("startBtn");
-let markBtn = document.getElementById("markBtn");
-let statusText = document.getElementById("statusText");
-
-let stream = null;
-
-startBtn.addEventListener("click", async () => {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-
-        statusText.innerText = "✅ Camera started";
-        markBtn.disabled = false;
-        startBtn.disabled = true;
-
-    } catch (err) {
-        alert("Camera error: " + err.message);
-    }
-});
-
-markBtn.addEventListener("click", async () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-
-    const blob = await new Promise(resolve =>
-        canvas.toBlob(resolve, "image/jpeg")
-    );
-
-    const formData = new FormData();
-    formData.append("image", blob);
-
-    statusText.innerText = "🔍 Recognizing...";
-    statusText.style.color = "#4f46e5";
-
-    try {
-        const res = await fetch("/recognize_face", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (data.recognized) {
-            statusText.innerHTML = "✅ Attendance marked for <strong>" + data.name + "</strong>";
-            statusText.style.color = "#10b981";
-
-            if (data.message) {
-                statusText.innerText += " (" + data.message + ")";
-            }
-
-        } else {
-            statusText.innerText = "❌ Face not recognized";
-            statusText.style.color = "#ef4444";
+    <style>
+        /* ---- Wait / Scan countdown ring ---- */
+        .scan-panel {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+            margin-top: 14px;
+            transition: border-color 0.3s, background 0.3s;
         }
 
-    } catch (err) {
-        statusText.innerText = "❌ Error detecting face";
-        statusText.style.color = "#ef4444";
-    }
-});
-</script>
+        .scan-panel.scanning {
+            border-color: rgba(34, 211, 238, 0.25);
+            background: rgba(34, 211, 238, 0.04);
+        }
 
+        .scan-panel.waiting {
+            border-color: rgba(245, 158, 11, 0.25);
+            background: rgba(245, 158, 11, 0.04);
+        }
+
+        .scan-panel.match {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .scan-panel.nomatch {
+            border-color: rgba(248, 113, 113, 0.25);
+            background: rgba(248, 113, 113, 0.04);
+        }
+
+        /* SVG countdown ring */
+        .ring-wrap {
+            position: relative;
+            width: 58px;
+            height: 58px;
+            flex-shrink: 0;
+        }
+
+        .ring-wrap svg {
+            transform: rotate(-90deg);
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.06);
+            stroke-width: 4;
+        }
+
+        .ring-fill {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 163;
+            stroke-dashoffset: 163;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .ring-fill.cyan {
+            stroke: #22d3ee;
+        }
+
+        .ring-fill.amber {
+            stroke: #f59e0b;
+        }
+
+        .ring-fill.green {
+            stroke: #10b981;
+        }
+
+        .ring-fill.red {
+            stroke: #f87171;
+        }
+
+        .ring-num {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            font-weight: 700;
+            color: #c8d0e0;
+        }
+
+        .scan-info-label {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 3px;
+        }
+
+        .scan-info-desc {
+            font-size: 13px;
+            color: #8b93b0;
+        }
+
+        /* Scan line animation on camera */
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+            top: 0;
+            animation: scanDown 2.5s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .scan-line.active {
+            opacity: 1;
+        }
+
+        @keyframes scanDown {
+            0% {
+                top: 0%;
+            }
+
+            50% {
+                top: 100%;
+            }
+
+            100% {
+                top: 0%;
+            }
+        }
+
+        /* Recognized list */
+        .rec-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .rec-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 8px;
+            animation: fadeSlide 0.3s ease;
+        }
+
+        .rec-item.already {
+            background: rgba(245, 158, 11, 0.07);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .rec-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #34d399;
+            flex-shrink: 0;
+        }
+
+        .rec-item.already .rec-avatar {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .rec-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #c8d0e0;
+        }
+
+        .rec-time {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #3a4060;
+        }
+
+        .rec-badge {
+            margin-left: auto;
+            font-size: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+        }
+
+        .rec-badge.marked {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .rec-badge.repeat {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        /* layout: camera left, list right */
+        .feed-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        @media(max-width:860px) {
+            .feed-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon"><i class="bi bi-camera"></i></div>
+                <div>
+                    <div class="logo-text">FRA</div>
+                    <div class="logo-sub">Face Recognition<br>Attendance</div>
+                </div>
+            </div>
+            <nav>
+                <a href="/"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a href="/mark_attendance" class="active"><i class="bi bi-camera-video"></i> Live Feed</a>
+                <a href="/students_list"><i class="bi bi-person-plus"></i> People DB</a>
+                <a href="/attendance_record"><i class="bi bi-file-text"></i> Logs</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <h2>Live Camera Feed</h2>
+                    <div class="page-sub">Biometric Scanner — Realtime Inference</div>
+                </div>
+                <span
+                    style="display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);padding:6px 14px;border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#10b981;font-weight:600;letter-spacing:0.5px;">
+                    <i class="bi bi-camera-video-fill" style="font-size:11px;"></i> CAMERA_ACTIVE
+                </span>
+            </div>
+
+            <div class="feed-layout">
+
+                <!-- LEFT: camera -->
+                <div class="panel" style="padding:16px;">
+                    <span class="section-label">Camera Array 01</span>
+
+                    <div class="camera-box" style="position:relative;">
+                        <!-- live badge -->
+                        <div
+                            style="position:absolute;top:10px;left:12px;z-index:20;display:flex;align-items:center;gap:6px;">
+                            <div
+                                style="width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 2s infinite;">
+                            </div>
+                            <span
+                                style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#10b981;font-weight:600;letter-spacing:0.5px;">LIVE</span>
+                        </div>
+                        <!-- scan sweep line -->
+                        <div class="scan-line" id="scanLine"></div>
+                        <video id="video" height="320" autoplay muted></video>
+                    </div>
+
+                    <!-- buttons -->
+                    <div style="display:flex;justify-content:center;gap:12px;margin-top:16px;">
+                        <button id="startBtn" class="btn-purple">
+                            <i class="bi bi-play-fill"></i> INITIALIZE CAMERA
+                        </button>
+                        <button id="scanBtn" class="btn-green" disabled>
+                            <i class="bi bi-arrow-repeat"></i> START AUTO-SCAN
+                        </button>
+                        <button id="stopBtn" class="btn-ghost" disabled>
+                            <i class="bi bi-stop-fill"></i> STOP
+                        </button>
+                    </div>
+
+                    <!-- Scan / Wait status panel -->
+                    <div class="scan-panel" id="scanPanel">
+                        <!-- Ring -->
+                        <div class="ring-wrap">
+                            <svg width="58" height="58" viewBox="0 0 58 58">
+                                <circle class="ring-bg" cx="29" cy="29" r="26" />
+                                <circle class="ring-fill cyan" id="ringFill" cx="29" cy="29" r="26" />
+                            </svg>
+                            <div class="ring-num" id="ringNum">—</div>
+                        </div>
+                        <!-- Text -->
+                        <div>
+                            <div class="scan-info-label" id="scanLabel" style="color:#3a4060;">IDLE</div>
+                            <div class="scan-info-desc" id="scanDesc">Initialize camera to begin.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: recognized list -->
+                <div class="panel" style="padding:16px;">
+                    <span class="section-label">Recognized This Session</span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span id="recCount"
+                            style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3a4060;">0 marked</span>
+                        <button onclick="clearList()" class="btn-ghost"
+                            style="font-size:11px;padding:4px 10px;">Clear</button>
+                    </div>
+                    <div class="rec-list" id="recList">
+                        <p
+                            style="color:#3a4060;font-size:12px;font-family:'JetBrains Mono',monospace;text-align:center;padding:20px 0;">
+                            NO_DATA — Start camera to begin scanning
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /* ============================================================
+           CONFIGURATION
+           ============================================================ */
+        const SCAN_INTERVAL_MS = 3000;   // how often to fire a recognition
+        const WAIT_AFTER_MATCH_S = 5;    // seconds to pause after a successful match
+        const WAIT_AFTER_NO_MATCH_S = 2; // seconds to pause after no face found
+
+        /* ============================================================
+           DOM REFS
+           ============================================================ */
+        const video = document.getElementById("video");
+        const startBtn = document.getElementById("startBtn");
+        const scanBtn = document.getElementById("scanBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const scanLine = document.getElementById("scanLine");
+        const scanPanel = document.getElementById("scanPanel");
+        const ringFill = document.getElementById("ringFill");
+        const ringNum = document.getElementById("ringNum");
+        const scanLabel = document.getElementById("scanLabel");
+        const scanDesc = document.getElementById("scanDesc");
+        const recList = document.getElementById("recList");
+        const recCount = document.getElementById("recCount");
+
+        /* ============================================================
+           STATE
+           ============================================================ */
+        let stream = null;
+        let scanInterval = null;
+        let waitTimer = null;
+        let isWaiting = false;
+        let sessionCount = 0;
+
+        /* circumference of r=26 circle ≈ 163.4 */
+        const CIRC = 2 * Math.PI * 26;
+
+        /* ============================================================
+           RING HELPERS
+           ============================================================ */
+        function ringSetColor(color) {
+            ringFill.className = "ring-fill " + color;
+        }
+
+        function ringSetProgress(fraction) {
+            // fraction 0→1; 0 = full ring, 1 = empty
+            ringFill.style.strokeDashoffset = CIRC * (1 - fraction);
+        }
+
+        function ringAnimate(totalSeconds, colorClass, onDone) {
+            ringSetColor(colorClass);
+            let elapsed = 0;
+            clearInterval(waitTimer);
+
+            const tick = () => {
+                elapsed++;
+                const remaining = totalSeconds - elapsed;
+                ringNum.textContent = remaining >= 0 ? remaining : 0;
+                ringSetProgress(elapsed / totalSeconds);
+
+                if (elapsed >= totalSeconds) {
+                    clearInterval(waitTimer);
+                    if (onDone) onDone();
+                }
+            };
+
+            ringSetProgress(0);
+            ringNum.textContent = totalSeconds;
+            waitTimer = setInterval(tick, 1000);
+        }
+
+        /* ============================================================
+           STATUS PANEL
+           ============================================================ */
+        function setStatus(mode, labelText, descText) {
+            scanPanel.className = "scan-panel " + mode;
+            scanLabel.textContent = labelText;
+            scanDesc.textContent = descText;
+
+            const colors = { scanning: "#22d3ee", waiting: "#f59e0b", match: "#10b981", nomatch: "#f87171", idle: "#3a4060" };
+            scanLabel.style.color = colors[mode] || colors.idle;
+        }
+
+        /* ============================================================
+           INIT CAMERA
+           ============================================================ */
+        startBtn.addEventListener("click", async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                startBtn.disabled = true;
+                scanBtn.disabled = false;
+                setStatus("idle", "READY", "Click Start Auto-Scan to begin recognizing.");
+                ringSetProgress(0);
+                ringNum.textContent = "▶";
+            } catch (err) {
+                alert("Camera error: " + err.message);
+            }
+        });
+
+        /* ============================================================
+           START AUTO-SCAN
+           ============================================================ */
+        scanBtn.addEventListener("click", () => {
+            scanBtn.disabled = true;
+            stopBtn.disabled = false;
+            isWaiting = false;
+
+            // Clear placeholder text first time
+            if (recList.querySelector("p")) recList.innerHTML = "";
+
+            fireScan();  // immediate first scan
+            scanInterval = setInterval(() => {
+                if (!isWaiting) fireScan();
+            }, SCAN_INTERVAL_MS);
+        });
+
+        /* ============================================================
+           STOP
+           ============================================================ */
+        stopBtn.addEventListener("click", stopAll);
+
+        function stopAll() {
+            clearInterval(scanInterval);
+            clearInterval(waitTimer);
+            scanInterval = null;
+            isWaiting = false;
+
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+
+            video.srcObject = null;
+            startBtn.disabled = false;
+            scanBtn.disabled = true;
+            stopBtn.disabled = true;
+            scanLine.classList.remove("active");
+            setStatus("idle", "STOPPED", "Camera stopped. Initialize to restart.");
+            ringNum.textContent = "■";
+            ringSetProgress(0);
+        }
+
+        /* ============================================================
+           FIRE ONE RECOGNITION ATTEMPT
+           ============================================================ */
+        async function fireScan() {
+            if (!stream || isWaiting) return;
+
+            // Activate scan sweep
+            scanLine.classList.add("active");
+            setStatus("scanning", "SCANNING", "Analyzing biometric data...");
+            ringSetColor("cyan");
+            ringSetProgress(0.5);
+            ringNum.textContent = "⟳";
+
+            // Capture frame
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            canvas.getContext("2d").drawImage(video, 0, 0);
+
+            const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+            const fd = new FormData();
+            fd.append("image", blob, "snap.jpg");
+
+            try {
+                const res = await fetch("/recognize_face", { method: "POST", body: fd });
+                const data = await res.json();
+
+                scanLine.classList.remove("active");
+
+                if (data.recognized) {
+                    // Support both array (data.results) and flat response
+                    const results = data.results || [{ recognized: true, name: data.name, message: data.message || "Marked" }];
+                    let anyNewMatch = false;
+
+                    results.forEach(r => {
+                        if (!r.recognized) return;
+                        anyNewMatch = true;
+                        const isAlready = r.message === "Already marked";
+                        addToList(r.name, isAlready);
+                        if (!isAlready) sessionCount++;
+                    });
+
+                    if (anyNewMatch) {
+                        const names = results.filter(r => r.recognized).map(r => r.name).join(", ");
+                        setStatus("match", "MATCH_FOUND", names);
+                        isWaiting = true;
+                        ringAnimate(WAIT_AFTER_MATCH_S, "green", () => {
+                            isWaiting = false;
+                            setStatus("scanning", "READY", "Scanning...");
+                        });
+                    } else {
+                        handleNoFace();
+                    }
+
+                } else {
+                    // No face detected or not recognized
+                    handleNoFace(data.error);
+                }
+
+                recCount.textContent = sessionCount + " marked";
+
+            } catch (err) {
+                scanLine.classList.remove("active");
+                setStatus("nomatch", "ERROR", "Server error — retrying...");
+                console.error(err);
+            }
+        }
+
+        /* ============================================================
+           HANDLE NO FACE / NO MATCH
+           ============================================================ */
+        function handleNoFace(errMsg) {
+            const msg = errMsg || "No face detected";
+            setStatus("nomatch", "NO_MATCH", msg);
+
+            isWaiting = true;
+            ringAnimate(WAIT_AFTER_NO_MATCH_S, "red", () => {
+                isWaiting = false;
+                if (scanInterval) setStatus("scanning", "READY", "Scanning...");
+            });
+        }
+
+        /* ============================================================
+           ADD RECOGNIZED PERSON TO LIST
+           ============================================================ */
+        function addToList(name, isAlready) {
+            const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const letter = name[0].toUpperCase();
+
+            const item = document.createElement("div");
+            item.className = "rec-item" + (isAlready ? " already" : "");
+            item.innerHTML = `
+        <div class="rec-avatar">${letter}</div>
+        <div>
+            <div class="rec-name">${name}</div>
+            <div class="rec-time">${time}</div>
+        </div>
+        <span class="rec-badge ${isAlready ? 'repeat' : 'marked'}">${isAlready ? 'REPEAT' : 'MARKED'}</span>
+    `;
+            recList.prepend(item);
+        }
+
+        /* ============================================================
+           CLEAR LIST
+           ============================================================ */
+        function clearList() {
+            recList.innerHTML = "";
+            sessionCount = 0;
+            recCount.textContent = "0 marked";
+        }
+    </script>
 </body>
+
 </html>

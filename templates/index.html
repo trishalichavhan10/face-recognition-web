@@ -1,101 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Digital Attendance Dashboard</title>
 
-<!-- Font -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard — FRA</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-<div class="dashboard">
+    <div class="dashboard">
 
-    <!-- ===== SIDEBAR ===== -->
-    <aside class="sidebar">
-        <h3 class="logo">
-            <i class="bi bi-person-bounding-box"></i>
-            Attendly
-        </h3>
-
-        <nav>
-            <a href="/" class="active">
-                <i class="bi bi-grid-1x2"></i> Dashboard
-            </a>
-            <a href="/add_student" class="nav-add">
-                <i class="bi bi-person-plus"></i> Add Student
-            </a>
-            <a href="/mark_attendance" class="nav-mark">
-                <i class="bi bi-camera-video"></i> Live Check-In
-            </a>
-            <a href="/attendance_record" class="nav-record">
-                <i class="bi bi-clipboard-data"></i> Logs
-            </a>
-        </nav>
-    </aside>
-
-    <!-- ===== MAIN ===== -->
-    <main class="main">
-        <div class="topbar">
-            <div>
-                <h2>Dashboard Overview</h2>
-                <small style="color:#64748b; font-weight:500;">Smart Attendance System</small>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon"><i class="bi bi-camera"></i></div>
+                <div>
+                    <div class="logo-text">FRA</div>
+                    <div class="logo-sub">Face Recognition<br>Attendance</div>
+                </div>
             </div>
-            <button id="trainBtn" class="btn-primary">
-                <i class="bi bi-cpu"></i> Train Model
-            </button>
-        </div>
+            <nav>
+                <a href="/" class="active"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a href="/mark_attendance"><i class="bi bi-camera-video"></i> Live Feed</a>
+                <a href="/students_list"><i class="bi bi-person-plus"></i> People DB</a>
+                <a href="/attendance_record"><i class="bi bi-file-text"></i> Logs</a>
+            </nav>
+        </aside>
 
-        <!-- STATS -->
-        <div class="cards">
-            <div class="card stat">
-                <h6>Total Students</h6>
-                <h2>120</h2>
-                <small style="color:#64748b;">Registered users</small>
+        <!-- MAIN -->
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <h2>Dashboard</h2>
+                    <div class="page-sub">System Operational — Live Monitoring</div>
+                </div>
+                <span class="badge-active">SECURE_ACTIVE</span>
             </div>
-            <div class="card stat">
-                <h6>Attendance Today</h6>
-                <h2>87%</h2>
-                <small style="color:#64748b;">Daily performance</small>
-            </div>
-            <div class="card stat">
-                <h6>Total Classes</h6>
-                <h2>8</h2>
-                <small style="color:#64748b;">Active classes</small>
-            </div>
-        </div>
 
-        <!-- TRAIN MODEL -->
-        <div class="card train-card mb-4">
-            <h5 style="margin:0 0 10px 0; font-size:18px; color:#0f172a;"><i class="bi bi-gear-fill" style="color:#4f46e5;"></i> Train AI Model</h5>
-            <div class="progress mt-3">
-                <div id="trainProgress" class="progress-bar" style="width:0%"></div>
+            <!-- SYSTEM STATISTICS -->
+            <span class="section-label">System Statistics</span>
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <div class="stat-num" id="totalStudents">—</div>
+                        <div class="stat-lbl">Total Registered</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div>
+                        <div class="stat-num" id="attendanceToday">—</div>
+                        <div class="stat-lbl">Present Today</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon indigo"><i class="bi bi-mortarboard-fill"></i></div>
+                    <div>
+                        <div class="stat-num" id="totalClasses">—</div>
+                        <div class="stat-lbl">Active Classes</div>
+                    </div>
+                </div>
             </div>
-            <div id="trainMsg" class="mt-2 text-muted small" style="color:#64748b; font-weight:500; font-size:13px; margin-top:8px;">
-                Model not trained yet.
+
+            <!-- AI MODEL + RECENT ACTIVITY -->
+            <div class="two-col">
+                <!-- AI MODEL ENGINE -->
+                <div class="panel">
+                    <span class="section-label">AI Model Engine</span>
+                    <p style="color:#4a5270;font-size:13px;margin-bottom:16px;">Recompile face embeddings database.</p>
+                    <button id="trainBtn" class="btn-train" onclick="trainModel()">
+                        <i class="bi bi-cpu-fill"></i> TRAIN MODEL
+                    </button>
+                    <div class="fra-progress" style="margin-top:14px;">
+                        <div id="trainProgress" class="fra-progress-bar" style="width:0%;"></div>
+                    </div>
+                    <div id="trainMsg"
+                        style="font-size:11px;color:#3a4060;font-family:'JetBrains Mono',monospace;margin-top:8px;">
+                        AWAITING_COMMAND ...
+                    </div>
+                </div>
+
+                <!-- RECENT ACTIVITY -->
+                <div class="panel">
+                    <span class="section-label">Recent Activity Feed</span>
+                    <div id="recentActivityList">
+                        <p style="color:#3a4060;font-size:12px;font-family:'JetBrains Mono',monospace;">LOADING ...</p>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <!-- CHART -->
-        <div class="card chart-card mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 style="margin:0; font-size:18px; color:#0f172a;">
-                    <i class="bi bi-bar-chart-fill" style="color:#4f46e5;"></i> Analytics
-                </h5>
+            <!-- ANALYTICS CHART -->
+            <div class="chart-panel">
+                <span class="section-label">Analytics — Recognition Logs</span>
+                <canvas id="attendanceChart" style="max-height:220px;"></canvas>
             </div>
-            <canvas id="attendanceChart" style="max-height:280px;"></canvas>
-        </div>
-    </main>
-
-</div>
-
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-<script src="{{ url_for('static', filename='js/camera_mark.js') }}"></script>
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
+
 </html>

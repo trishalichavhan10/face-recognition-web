@@ -1,17 +1,18 @@
+# pyright: reportAttributeAccessIssue=false
 import os
 import cv2
 import numpy as np
 import pickle
-import mediapipe as mp
+import mediapipe.python.solutions.face_detection as mp_face_detection
 from sklearn.ensemble import RandomForestClassifier
 
 MODEL_PATH = "model.pkl"
 
-# ✅ FIXED face detector (no errors)
+
 def get_face_detector():
-    return mp.solutions.face_detection.FaceDetection(
-        model_selection=1,
-        min_detection_confidence=0.5
+    return mp_face_detection.FaceDetection(
+        model_selection=0,          # FIX: 0 = close range (webcam), 1 = far range (2m+)
+        min_detection_confidence=0.3  # FIX: lowered from 0.5 so more faces are caught
     )
 
 
@@ -42,7 +43,6 @@ def extract_embedding_for_image(input_data):
     detector = get_face_detector()
 
     try:
-        # handle file or image
         if hasattr(input_data, "read"):
             file_bytes = np.frombuffer(input_data.read(), np.uint8)
             img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -52,8 +52,10 @@ def extract_embedding_for_image(input_data):
         if img is None:
             return None
 
-        # Resize for better and faster detection
-        img = cv2.resize(img, (640, 480))
+        # FIX: only resize down, never upscale tiny images
+        h, w = img.shape[:2]
+        if w > 640 or h > 480:
+            img = cv2.resize(img, (640, 480))
 
         results = detector.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
@@ -80,14 +82,14 @@ def predict_with_model(clf, emb):
 
 def train_model_background(dataset_dir, progress_callback=None):
     detector = get_face_detector()
-
     X, y = [], []
 
+    students = [s for s in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir, s))]
+    total = len(students)
+
     try:
-        for sid in os.listdir(dataset_dir):
+        for i, sid in enumerate(students):
             folder = os.path.join(dataset_dir, sid)
-            if not os.path.isdir(folder):
-                continue
 
             for file in os.listdir(folder):
                 if not file.lower().endswith((".jpg", ".png", ".jpeg")):
@@ -97,8 +99,10 @@ def train_model_background(dataset_dir, progress_callback=None):
                 if img is None:
                     continue
 
-                # Resize image for consistency
-                img = cv2.resize(img, (640, 480))
+                # FIX: only resize down, never upscale
+                h, w = img.shape[:2]
+                if w > 640 or h > 480:
+                    img = cv2.resize(img, (640, 480))
 
                 results = detector.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
                 if not results.detections:
@@ -108,19 +112,27 @@ def train_model_background(dataset_dir, progress_callback=None):
                 if emb is not None:
                     X.append(emb)
                     y.append(int(sid))
+
+            # Report progress per student
+            if progress_callback and total > 0:
+                progress_callback(int((i + 1) / total * 90), f"Processing student {i+1}/{total}")
+
     finally:
         detector.close()
 
     if not X:
         if progress_callback:
-            progress_callback(0, "No data")
+            progress_callback(0, "No faces found in dataset")
         return
 
-    clf = RandomForestClassifier(n_estimators=200)
+    if progress_callback:
+        progress_callback(95, "Fitting classifier ...")
+
+    clf = RandomForestClassifier(n_estimators=200, random_state=42)
     clf.fit(np.array(X), np.array(y))
 
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(clf, f)
 
     if progress_callback:
-        progress_callback(100, "Training complete")
+        progress_callback(100, "Training complete ✅")
