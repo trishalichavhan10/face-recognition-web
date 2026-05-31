@@ -4,6 +4,7 @@ import threading
 import sqlite3
 import datetime
 import json
+import shutil as _shutil
 
 from flask import Flask, render_template, request, jsonify, send_file
 
@@ -287,9 +288,9 @@ def download_csv():
 
     return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="attendance.csv")
 
-
-import shutil as _shutil
-
+# -------------------------------
+# STUDENTS / PEOPLE DB
+# -------------------------------
 @app.route("/students_list")
 def students_list():
     conn = sqlite3.connect(DB_PATH)
@@ -317,7 +318,12 @@ def student_profile(student_id):
     absent_days = total_days - present_days
     percentage = round((present_days / total_days * 100) if total_days > 0 else 0)
     conn.close()
-    stats = {"present_days": present_days, "absent_days": absent_days, "total_days": total_days, "percentage": percentage}
+    stats = {
+        "present_days": present_days,
+        "absent_days": absent_days,
+        "total_days": total_days,
+        "percentage": percentage
+    }
     return render_template("student_profile.html", student=student, stats=stats)
 
 @app.route("/edit_student/<int:student_id>", methods=["POST"])
@@ -331,7 +337,10 @@ def edit_student(student_id):
         return jsonify({"success": False, "error": "Name required"})
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE students SET name=?, roll=?, reg_no=?, class=?, section=? WHERE id=?", (name, roll, reg_no, cls, sec, student_id))
+    c.execute(
+        "UPDATE students SET name=?, roll=?, reg_no=?, class=?, section=? WHERE id=?",
+        (name, roll, reg_no, cls, sec, student_id)
+    )
     conn.commit()
     conn.close()
     return jsonify({"success": True})

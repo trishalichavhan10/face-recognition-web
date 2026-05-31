@@ -72,18 +72,23 @@
             <!-- AI MODEL + RECENT ACTIVITY -->
             <div class="two-col">
                 <!-- AI MODEL ENGINE -->
-                <div class="panel">
+                <div class="panel" style="position: relative; overflow: hidden;">
                     <span class="section-label">AI Model Engine</span>
-                    <p style="color:#4a5270;font-size:13px;margin-bottom:16px;">Recompile face embeddings database.</p>
-                    <button id="trainBtn" class="btn-train" onclick="trainModel()">
-                        <i class="bi bi-cpu-fill"></i> TRAIN MODEL
-                    </button>
-                    <div class="fra-progress" style="margin-top:14px;">
-                        <div id="trainProgress" class="fra-progress-bar" style="width:0%;"></div>
-                    </div>
-                    <div id="trainMsg"
-                        style="font-size:11px;color:#3a4060;font-family:'JetBrains Mono',monospace;margin-top:8px;">
-                        AWAITING_COMMAND ...
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                        <div style="flex: 1; z-index: 2; position: relative;">
+                            <p style="color:#4a5270;font-size:13px;margin-bottom:16px;">Recompile face embeddings database.</p>
+                            <button id="trainBtn" class="btn-train" onclick="trainModel()">
+                                <i class="bi bi-cpu-fill"></i> TRAIN MODEL
+                            </button>
+                            <div class="fra-progress" style="margin-top:14px;">
+                                <div id="trainProgress" class="fra-progress-bar" style="width:0%;"></div>
+                            </div>
+                            <div id="trainMsg"
+                                style="font-size:11px;color:#3a4060;font-family:'JetBrains Mono',monospace;margin-top:8px;">
+                                AWAITING_COMMAND ...
+                            </div>
+                        </div>
+                        <img src="{{ url_for('static', filename='images/ai_graphic.png') }}" style="width: 100px; height: 100px; opacity: 0.9; object-fit: contain; border-radius: 8px; z-index: 1;" alt="AI Graphic">
                     </div>
                 </div>
 
