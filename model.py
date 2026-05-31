@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 import pickle
-import mediapipe.python.solutions.face_detection as mp_face_detection
+import mediapipe.solutions.face_detection as mp_face_detection
 from sklearn.ensemble import RandomForestClassifier
 
 MODEL_PATH = "model.pkl"
